@@ -9,6 +9,7 @@ import { TotpTestForm } from "@/components/TotpTestForm";
 import { MarketData } from "@/components/MarketData";
 import { StockSearch } from "@/components/StockSearch";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 type ConnectionStatus = "disconnected" | "connected" | "pending" | "error";
 
@@ -133,27 +134,20 @@ const Index = () => {
     setConnectionStatus("pending");
     
     try {
-      // Angel One MPIN Login API call
-      const loginResponse = await fetch('https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByMpin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-UserType': 'USER',
-          'X-SourceID': 'WEB',
-          'X-ClientLocalIP': '192.168.1.1',
-          'X-ClientPublicIP': '106.193.147.98',
-          'X-MACAddress': '00:00:00:00:00:00',
-          'X-PrivateKey': credentials.apiKey
-        },
-        body: JSON.stringify({
-          clientcode: credentials.clientId,
+      // Angel One MPIN Login via Supabase Edge Function
+      const { data: loginData, error: loginError } = await supabase.functions.invoke('angel-one-proxy', {
+        body: {
+          action: 'loginByMpin',
+          apiKey: credentials.apiKey,
+          clientId: credentials.clientId,
           mpin: credentials.mpin,
-          totp: totpCode
-        })
+          totp: totpCode,
+        },
       });
 
-      const loginData = await loginResponse.json();
+      if (loginError) {
+        throw new Error(loginError.message || 'Login failed');
+      }
 
       if (loginData.status && loginData.data) {
         const tokens: SessionTokens = {
@@ -167,27 +161,20 @@ const Index = () => {
 
         // Fetch live market data for selected stock
         if (selectedStock) {
-          const marketResponse = await fetch('https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLTP', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'X-UserType': 'USER',
-              'X-SourceID': 'WEB',
-              'X-ClientLocalIP': '192.168.1.1',
-              'X-ClientPublicIP': '106.193.147.98',
-              'X-MACAddress': '00:00:00:00:00:00',
-              'X-PrivateKey': credentials.apiKey,
-              'Authorization': `Bearer ${tokens.jwtToken}`
-            },
-            body: JSON.stringify({
+          const { data: marketData, error: marketError } = await supabase.functions.invoke('angel-one-proxy', {
+            body: {
+              action: 'getLTP',
+              apiKey: credentials.apiKey,
+              jwtToken: tokens.jwtToken,
               exchange: selectedStock.exchange,
               tradingsymbol: selectedStock.symbol,
-              symboltoken: selectedStock.token
-            })
+              symboltoken: selectedStock.token,
+            },
           });
 
-          const marketData = await marketResponse.json();
+          if (marketError) {
+            throw new Error(marketError.message || 'Failed to fetch market data');
+          }
           
           if (marketData.status && marketData.data) {
             const ltp = marketData.data.ltp;
