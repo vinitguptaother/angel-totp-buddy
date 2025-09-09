@@ -91,40 +91,87 @@ const Index = () => {
     setConnectionStatus("pending");
     
     try {
-      // Mock API call - In real implementation, this would call Angel One's API
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate successful login response
-      const mockTokens: SessionTokens = {
-        jwtToken: "mock_jwt_token_" + Date.now(),
-        refreshToken: "mock_refresh_token_" + Date.now(),
-        feedToken: "mock_feed_token_" + Date.now(),
-      };
-      
-      setSessionTokens(mockTokens);
-      setConnectionStatus("connected");
-      
-      // Fetch mock market data
-      const mockData = {
-        symbol: "RELIANCE",
-        lastTradedPrice: 2847.65,
-        change: 45.30,
-        changePercent: 1.62,
-        volume: 2547890,
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      
-      setMarketData(mockData);
-      
-      toast({
-        title: "Login Successful",
-        description: "Successfully connected to Angel One API and fetched market data.",
+      // Angel One Login API call
+      const loginResponse = await fetch('https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-UserType': 'USER',
+          'X-SourceID': 'WEB',
+          'X-ClientLocalIP': '192.168.1.1',
+          'X-ClientPublicIP': '106.193.147.98',
+          'X-MACAddress': '00:00:00:00:00:00',
+          'X-PrivateKey': credentials.apiKey
+        },
+        body: JSON.stringify({
+          clientcode: credentials.clientId,
+          password: credentials.password,
+          totp: totpCode
+        })
       });
+
+      const loginData = await loginResponse.json();
+
+      if (loginData.status && loginData.data) {
+        const tokens: SessionTokens = {
+          jwtToken: loginData.data.jwtToken,
+          refreshToken: loginData.data.refreshToken,
+          feedToken: loginData.data.feedToken,
+        };
+        
+        setSessionTokens(tokens);
+        setConnectionStatus("connected");
+
+        // Fetch live market data for RELIANCE
+        const marketResponse = await fetch('https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLTP', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-UserType': 'USER',
+            'X-SourceID': 'WEB',
+            'X-ClientLocalIP': '192.168.1.1',
+            'X-ClientPublicIP': '106.193.147.98',
+            'X-MACAddress': '00:00:00:00:00:00',
+            'X-PrivateKey': credentials.apiKey,
+            'Authorization': `Bearer ${tokens.jwtToken}`
+          },
+          body: JSON.stringify({
+            exchange: "NSE",
+            tradingsymbol: "RELIANCE-EQ",
+            symboltoken: "2885"
+          })
+        });
+
+        const marketData = await marketResponse.json();
+        
+        if (marketData.status && marketData.data) {
+          const ltp = marketData.data.ltp;
+          const formattedData = {
+            symbol: "RELIANCE",
+            lastTradedPrice: ltp,
+            change: 0, // Calculate based on previous close if available
+            changePercent: 0,
+            volume: 0,
+            timestamp: new Date().toLocaleTimeString(),
+          };
+          
+          setMarketData(formattedData);
+        }
+        
+        toast({
+          title: "Login Successful",
+          description: "Successfully connected to Angel One API and fetched live market data.",
+        });
+      } else {
+        throw new Error(loginData.message || 'Login failed');
+      }
     } catch (error) {
       setConnectionStatus("error");
       toast({
         title: "Login Failed",
-        description: "Invalid TOTP code or connection error. Please try again.",
+        description: error instanceof Error ? error.message : "Invalid TOTP code or connection error. Please try again.",
         variant: "destructive",
       });
     }
