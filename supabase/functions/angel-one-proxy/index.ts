@@ -13,13 +13,42 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    // Robust body parsing to avoid JSON parse errors
+    let bodyText = '';
+    try {
+      bodyText = await req.text();
+    } catch (e) {
+      console.error('Failed reading request body as text:', e);
+    }
+
+    if (!bodyText || bodyText.trim().length === 0) {
+      console.warn('Empty request body received');
+      return new Response(JSON.stringify({ error: 'Empty request body', hint: 'Send JSON with action field' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const contentType = req.headers.get('content-type') ?? 'unknown';
+    console.log('Incoming request', { method: req.method, contentType, bodyLength: bodyText.length });
+
+    let body: any;
+    try {
+      body = JSON.parse(bodyText);
+    } catch (e) {
+      console.error('Invalid JSON body:', { message: (e as Error).message, sample: bodyText.slice(0, 200) });
+      return new Response(JSON.stringify({ error: 'Invalid JSON', hint: 'Ensure Content-Type: application/json and valid JSON' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const action = body?.action as string | undefined;
 
     if (!action) {
-      return new Response(JSON.stringify({ error: "Missing action" }), {
+      return new Response(JSON.stringify({ error: 'Missing action' }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
