@@ -131,13 +131,30 @@ serve(async (req) => {
       const responseText = await resp.text();
       console.log("Angel One API raw response:", responseText.slice(0, 500));
 
+      // Treat empty body as error even if status is 200
+      if (!responseText || responseText.trim().length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Empty response from Angel One API",
+            code: "ANGEL_EMPTY_BODY",
+            status: resp.status,
+            details: {
+              endpoint: "loginByMpin",
+              headers: Object.fromEntries(resp.headers.entries()),
+            }
+          }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       let angelOneData: any;
       try {
-        angelOneData = responseText ? JSON.parse(responseText) : {};
+        angelOneData = JSON.parse(responseText);
       } catch (parseError) {
         console.error("Failed to parse Angel One API response as JSON:", parseError);
         return new Response(JSON.stringify({ 
           error: "Invalid response from Angel One API",
+          code: "ANGEL_NON_JSON",
           details: "API returned non-JSON response",
           status: resp.status,
           rawResponse: responseText.slice(0, 200)
@@ -151,7 +168,7 @@ serve(async (req) => {
       if (!resp.ok) {
         return new Response(JSON.stringify({ 
           error: "Angel One API error",
-          details: angelOneData.message || angelOneData.errorMessage || "Authentication failed",
+          details: angelOneData?.message || angelOneData?.errorMessage || "Authentication failed",
           status: resp.status,
           angelOneResponse: angelOneData
         }), {
@@ -160,7 +177,13 @@ serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify(angelOneData), {
+      const wrapped = {
+        status: true,
+        message: angelOneData?.message || "OK",
+        data: (angelOneData && typeof angelOneData === 'object' && 'data' in angelOneData) ? angelOneData.data : angelOneData,
+      };
+
+      return new Response(JSON.stringify(wrapped), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -210,13 +233,30 @@ serve(async (req) => {
       const responseText = await resp.text();
       console.log("Angel One getLTP raw response:", responseText.slice(0, 500));
 
+      // Treat empty body as error even if status is 200
+      if (!responseText || responseText.trim().length === 0) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Empty response from Angel One API",
+            code: "ANGEL_EMPTY_BODY",
+            status: resp.status,
+            details: {
+              endpoint: "getLTP",
+              headers: Object.fromEntries(resp.headers.entries()),
+            }
+          }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       let angelOneData: any;
       try {
-        angelOneData = responseText ? JSON.parse(responseText) : {};
+        angelOneData = JSON.parse(responseText);
       } catch (parseError) {
         console.error("Failed to parse Angel One getLTP response as JSON:", parseError);
         return new Response(JSON.stringify({ 
           error: "Invalid response from Angel One API",
+          code: "ANGEL_NON_JSON",
           details: "API returned non-JSON response",
           status: resp.status,
           rawResponse: responseText.slice(0, 200)
@@ -230,7 +270,7 @@ serve(async (req) => {
       if (!resp.ok) {
         return new Response(JSON.stringify({ 
           error: "Angel One API error",
-          details: angelOneData.message || angelOneData.errorMessage || "Failed to fetch market data",
+          details: angelOneData?.message || angelOneData?.errorMessage || "Failed to fetch market data",
           status: resp.status,
           angelOneResponse: angelOneData
         }), {
@@ -239,7 +279,13 @@ serve(async (req) => {
         });
       }
 
-      return new Response(JSON.stringify(angelOneData), {
+      const wrapped = {
+        status: true,
+        message: angelOneData?.message || "OK",
+        data: (angelOneData && typeof angelOneData === 'object' && 'data' in angelOneData) ? angelOneData.data : angelOneData,
+      };
+
+      return new Response(JSON.stringify(wrapped), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
