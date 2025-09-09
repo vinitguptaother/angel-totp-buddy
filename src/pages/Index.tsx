@@ -3,10 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Shield, TrendingUp, Wifi, WifiOff, Clock } from "lucide-react";
+import { ChevronDown, Shield, TrendingUp, Wifi, WifiOff, Clock, Search } from "lucide-react";
 import { CredentialsForm } from "@/components/CredentialsForm";
 import { TotpTestForm } from "@/components/TotpTestForm";
 import { MarketData } from "@/components/MarketData";
+import { StockSearch } from "@/components/StockSearch";
 import { useToast } from "@/hooks/use-toast";
 
 type ConnectionStatus = "disconnected" | "connected" | "pending" | "error";
@@ -24,12 +25,25 @@ interface SessionTokens {
   feedToken: string;
 }
 
+interface Stock {
+  symbol: string;
+  token: string;
+  name: string;
+  exchange: string;
+}
+
 const Index = () => {
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [sessionTokens, setSessionTokens] = useState<SessionTokens | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [isCredentialsOpen, setIsCredentialsOpen] = useState(true);
   const [marketData, setMarketData] = useState<any>(null);
+  const [selectedStock, setSelectedStock] = useState<Stock | null>({
+    symbol: "RELIANCE-EQ",
+    token: "2885", 
+    name: "Reliance Industries",
+    exchange: "NSE"
+  });
   const { toast } = useToast();
 
   const getStatusIcon = () => {
@@ -123,41 +137,43 @@ const Index = () => {
         setSessionTokens(tokens);
         setConnectionStatus("connected");
 
-        // Fetch live market data for RELIANCE
-        const marketResponse = await fetch('https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLTP', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-UserType': 'USER',
-            'X-SourceID': 'WEB',
-            'X-ClientLocalIP': '192.168.1.1',
-            'X-ClientPublicIP': '106.193.147.98',
-            'X-MACAddress': '00:00:00:00:00:00',
-            'X-PrivateKey': credentials.apiKey,
-            'Authorization': `Bearer ${tokens.jwtToken}`
-          },
-          body: JSON.stringify({
-            exchange: "NSE",
-            tradingsymbol: "RELIANCE-EQ",
-            symboltoken: "2885"
-          })
-        });
+        // Fetch live market data for selected stock
+        if (selectedStock) {
+          const marketResponse = await fetch('https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLTP', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-UserType': 'USER',
+              'X-SourceID': 'WEB',
+              'X-ClientLocalIP': '192.168.1.1',
+              'X-ClientPublicIP': '106.193.147.98',
+              'X-MACAddress': '00:00:00:00:00:00',
+              'X-PrivateKey': credentials.apiKey,
+              'Authorization': `Bearer ${tokens.jwtToken}`
+            },
+            body: JSON.stringify({
+              exchange: selectedStock.exchange,
+              tradingsymbol: selectedStock.symbol,
+              symboltoken: selectedStock.token
+            })
+          });
 
-        const marketData = await marketResponse.json();
-        
-        if (marketData.status && marketData.data) {
-          const ltp = marketData.data.ltp;
-          const formattedData = {
-            symbol: "RELIANCE",
-            lastTradedPrice: ltp,
-            change: 0, // Calculate based on previous close if available
-            changePercent: 0,
-            volume: 0,
-            timestamp: new Date().toLocaleTimeString(),
-          };
+          const marketData = await marketResponse.json();
           
-          setMarketData(formattedData);
+          if (marketData.status && marketData.data) {
+            const ltp = marketData.data.ltp;
+            const formattedData = {
+              symbol: selectedStock.symbol.replace('-EQ', ''),
+              lastTradedPrice: ltp,
+              change: 0, // Calculate based on previous close if available
+              changePercent: 0,
+              volume: 0,
+              timestamp: new Date().toLocaleTimeString(),
+            };
+            
+            setMarketData(formattedData);
+          }
         }
         
         toast({
@@ -227,6 +243,25 @@ const Index = () => {
           </Collapsible>
         </Card>
 
+        {/* Stock Selection Section */}
+        <Card className="bg-trading-card border-trading-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Select Stock
+            </CardTitle>
+            <CardDescription>
+              Choose a stock to fetch real-time market data
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <StockSearch 
+              onSelectStock={setSelectedStock}
+              selectedStock={selectedStock}
+            />
+          </CardContent>
+        </Card>
+
         {/* TOTP Testing Section */}
         <Card className="bg-trading-card border-trading-border">
           <CardHeader>
@@ -235,14 +270,14 @@ const Index = () => {
               Test TOTP & Fetch Live Prices
             </CardTitle>
             <CardDescription>
-              Enter your 6-digit TOTP code to authenticate and fetch market data
+              Enter your 6-digit TOTP code to authenticate and fetch market data for {selectedStock?.name || 'selected stock'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <TotpTestForm 
               onSubmit={handleTotpLogin}
               isLoading={connectionStatus === "pending"}
-              disabled={!credentials}
+              disabled={!credentials || !selectedStock}
             />
           </CardContent>
         </Card>
