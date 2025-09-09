@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -32,6 +32,8 @@ interface Stock {
   exchange: string;
 }
 
+const STORAGE_KEY = 'angelone_credentials';
+
 const Index = () => {
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [sessionTokens, setSessionTokens] = useState<SessionTokens | null>(null);
@@ -45,6 +47,20 @@ const Index = () => {
     exchange: "NSE"
   });
   const { toast } = useToast();
+
+  // Load credentials from localStorage on app startup
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const creds = JSON.parse(stored);
+        setCredentials(creds);
+        setIsCredentialsOpen(false); // Close credentials section if found
+      }
+    } catch (error) {
+      console.error('Failed to load credentials from storage:', error);
+    }
+  }, []);
 
   const getStatusIcon = () => {
     switch (connectionStatus) {
@@ -88,7 +104,19 @@ const Index = () => {
     setIsCredentialsOpen(false);
     toast({
       title: "Credentials Saved",
-      description: "Your Angel One API credentials have been securely stored.",
+      description: "Your Angel One API credentials have been stored locally for testing.",
+    });
+  };
+
+  const handleClearStorage = () => {
+    setCredentials(null);
+    setSessionTokens(null);
+    setConnectionStatus("disconnected");
+    setMarketData(null);
+    setIsCredentialsOpen(true);
+    toast({
+      title: "Storage Cleared",
+      description: "All stored credentials and session data have been cleared.",
     });
   };
 
@@ -237,6 +265,7 @@ const Index = () => {
                 <CredentialsForm 
                   onSave={handleCredentialsSave}
                   hasCredentials={!!credentials}
+                  onClearStorage={handleClearStorage}
                 />
               </CardContent>
             </CollapsibleContent>

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info, Eye, EyeOff, Save } from "lucide-react";
+import { Info, Eye, EyeOff, Save, Trash2 } from "lucide-react";
 
 interface CredentialsFormProps {
   onSave: (credentials: {
@@ -13,9 +13,12 @@ interface CredentialsFormProps {
     totpSecret?: string;
   }) => void;
   hasCredentials: boolean;
+  onClearStorage?: () => void;
 }
 
-export const CredentialsForm = ({ onSave, hasCredentials }: CredentialsFormProps) => {
+const STORAGE_KEY = 'angelone_credentials';
+
+export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: CredentialsFormProps) => {
   const [formData, setFormData] = useState({
     apiKey: "",
     clientId: "",
@@ -25,22 +28,54 @@ export const CredentialsForm = ({ onSave, hasCredentials }: CredentialsFormProps
   const [showPassword, setShowPassword] = useState(false);
   const [showTotpSecret, setShowTotpSecret] = useState(false);
 
+  // Load credentials from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const credentials = JSON.parse(stored);
+        setFormData(credentials);
+      }
+    } catch (error) {
+      console.error('Failed to load credentials from storage:', error);
+    }
+  }, []);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.apiKey && formData.clientId && formData.password) {
-      onSave({
+      const credentials = {
         apiKey: formData.apiKey,
         clientId: formData.clientId,
         password: formData.password,
         totpSecret: formData.totpSecret || undefined,
-      });
-      // Clear form for security
+      };
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+      } catch (error) {
+        console.error('Failed to save credentials to storage:', error);
+      }
+      
+      onSave(credentials);
+    }
+  };
+
+  const handleClearStorage = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
       setFormData({
         apiKey: "",
         clientId: "",
         password: "",
         totpSecret: "",
       });
+      if (onClearStorage) {
+        onClearStorage();
+      }
+    } catch (error) {
+      console.error('Failed to clear credentials from storage:', error);
     }
   };
 
@@ -54,16 +89,27 @@ export const CredentialsForm = ({ onSave, hasCredentials }: CredentialsFormProps
         <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
           <p className="text-success">✓ Credentials have been saved securely</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Your API credentials are stored and ready for authentication
+            Your API credentials are stored locally and ready for authentication
           </p>
         </div>
-        <Button
-          onClick={() => window.location.reload()}
-          variant="outline"
-          size="sm"
-        >
-          Update Credentials
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outline"
+            size="sm"
+          >
+            Update Credentials
+          </Button>
+          <Button
+            onClick={handleClearStorage}
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Clear Stored Data
+          </Button>
+        </div>
       </div>
     );
   }
