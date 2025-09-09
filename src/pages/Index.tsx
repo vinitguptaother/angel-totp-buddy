@@ -147,14 +147,24 @@ const Index = () => {
 
       if (loginError) {
         console.error('Supabase function error:', loginError);
+        // For non-2xx responses, the actual error details are in loginData
+        if (loginError.message.includes('non-2xx status code') && loginData?.error) {
+          const errorMsg = loginData.code === 'ANGEL_EMPTY_BODY' 
+            ? 'Angel One API returned empty response. Please check your API credentials.'
+            : loginData.details || loginData.error;
+          throw new Error(errorMsg);
+        }
         throw new Error(loginError.message || 'Connection to API proxy failed');
       }
 
       console.log('Login response:', loginData);
 
-      // Handle Edge Function errors (non-2xx responses)
-      if (loginData.error) {
-        throw new Error(loginData.details || loginData.error || 'Authentication failed');
+      // Handle Edge Function errors (non-2xx responses)  
+      if (loginData?.error) {
+        const errorMsg = loginData.code === 'ANGEL_EMPTY_BODY' 
+          ? 'Angel One API returned empty response. Please check your API credentials.'
+          : loginData.details || loginData.error;
+        throw new Error(errorMsg);
       }
 
       if (loginData.status && loginData.data) {
@@ -182,14 +192,24 @@ const Index = () => {
 
             if (marketError) {
               console.error('Market data fetch error:', marketError);
+              // For non-2xx responses, check marketData for detailed error
+              if (marketError.message.includes('non-2xx status code') && marketData?.error) {
+                const errorMsg = marketData.code === 'ANGEL_EMPTY_BODY' 
+                  ? 'Angel One API returned empty response for market data.'
+                  : marketData.details || marketData.error;
+                throw new Error(errorMsg);
+              }
               throw new Error(marketError.message || 'Failed to fetch market data');
             }
 
             console.log('Market data response:', marketData);
 
             // Handle Edge Function errors
-            if (marketData.error) {
-              throw new Error(marketData.details || marketData.error || 'Failed to fetch market data');
+            if (marketData?.error) {
+              const errorMsg = marketData.code === 'ANGEL_EMPTY_BODY' 
+                ? 'Angel One API returned empty response for market data.'
+                : marketData.details || marketData.error;
+              throw new Error(errorMsg);
             }
             
             if (marketData.status && marketData.data) {
