@@ -31,9 +31,9 @@ export const TotpTestForm = ({ onSubmit, isLoading, disabled }: TotpTestFormProp
     <div className="space-y-4">
       {disabled && (
         <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
-          <p className="text-warning">⚠️ Please save your credentials first</p>
+          <p className="text-warning">⚠️ Prerequisites missing</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Your API credentials are required before testing TOTP authentication
+            Please save your Angel One API credentials and select a stock before testing authentication.
           </p>
         </div>
       )}

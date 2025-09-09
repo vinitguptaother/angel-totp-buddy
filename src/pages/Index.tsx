@@ -8,6 +8,7 @@ import { CredentialsForm } from "@/components/CredentialsForm";
 import { TotpTestForm } from "@/components/TotpTestForm";
 import { MarketData } from "@/components/MarketData";
 import { StockSearch } from "@/components/StockSearch";
+import { CredentialStatus } from "@/components/CredentialStatus";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -238,21 +239,29 @@ const Index = () => {
       console.error('Login process failed:', error);
       setConnectionStatus("error");
       
-      let errorMessage = "Login failed. Please try again.";
+      let errorMessage = "Authentication failed. Please check your credentials.";
+      let errorTitle = "Authentication Failed";
+      
       if (error instanceof Error) {
-        if (error.message.includes('Invalid MPIN format')) {
+        if (error.message.includes('Empty response from Angel One API') || error.message.includes('ANGEL_EMPTY_BODY')) {
+          errorTitle = "Invalid API Credentials";
+          errorMessage = "Angel One API rejected your credentials. Please verify:\n• API Key is correct and active\n• Client ID matches your Angel One account\n• MPIN is your 4-digit trading PIN\n• TOTP code is current (expires every 30s)";
+        } else if (error.message.includes('Invalid MPIN format')) {
           errorMessage = "MPIN must be exactly 4 digits.";
         } else if (error.message.includes('Invalid TOTP format')) {
-          errorMessage = "TOTP must be exactly 6 digits.";
+          errorMessage = "TOTP code must be exactly 6 digits from your authenticator app.";
         } else if (error.message.includes('Angel One API error')) {
           errorMessage = error.message.replace('Angel One API error: ', '');
+        } else if (error.message.includes('non-JSON')) {
+          errorTitle = "API Connection Issue";
+          errorMessage = "Angel One API returned invalid data. This may be a temporary issue - please try again.";
         } else {
           errorMessage = error.message;
         }
       }
       
       toast({
-        title: "Authentication Failed",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive",
       });
@@ -263,7 +272,7 @@ const Index = () => {
     <div className="min-h-screen bg-trading-bg p-6">
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-2">
             <Shield className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Angel One API Integration</h1>
@@ -277,6 +286,12 @@ const Index = () => {
               {getStatusText()}
             </Badge>
           </div>
+          
+          {/* Status Alert */}
+          <CredentialStatus 
+            hasCredentials={!!credentials} 
+            connectionStatus={connectionStatus}
+          />
         </div>
 
         {/* Credentials Section */}

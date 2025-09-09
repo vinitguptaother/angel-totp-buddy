@@ -95,7 +95,7 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={() => window.location.reload()}
+            onClick={handleClearStorage}
             variant="outline"
             size="sm"
           >
@@ -108,7 +108,7 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Clear Stored Data
+            Clear All Data
           </Button>
         </div>
       </div>
@@ -144,12 +144,16 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
           <Input
             id="apiKey"
             type="text"
-            placeholder="Enter your API Key"
+            placeholder="e.g., VVcKutoe (8 characters)"
             value={formData.apiKey}
-            onChange={(e) => handleInputChange("apiKey", e.target.value)}
+            onChange={(e) => handleInputChange("apiKey", e.target.value.trim())}
             required
+            maxLength={20}
             className="bg-trading-card border-trading-border"
           />
+          {formData.apiKey && formData.apiKey.length < 6 && (
+            <p className="text-xs text-warning">⚠️ API Key seems too short</p>
+          )}
         </div>
 
         {/* Client ID */}
@@ -168,12 +172,15 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
           <Input
             id="clientId"
             type="text"
-            placeholder="Enter your Client ID"
+            placeholder="e.g., V58786616"
             value={formData.clientId}
-            onChange={(e) => handleInputChange("clientId", e.target.value)}
+            onChange={(e) => handleInputChange("clientId", e.target.value.trim())}
             required
             className="bg-trading-card border-trading-border"
           />
+          {formData.clientId && !/^[A-Z]\d{8}$/.test(formData.clientId) && (
+            <p className="text-xs text-warning">⚠️ Client ID format: Letter + 8 digits (e.g., V12345678)</p>
+          )}
         </div>
 
         {/* MPIN */}
