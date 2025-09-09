@@ -67,62 +67,180 @@ serve(async (req) => {
 
     if (action === "loginByMpin") {
       const { apiKey, clientId, mpin, totp } = body ?? {};
-      if (!apiKey || !clientId || !mpin || !totp) {
-        return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      
+      // Sanitize and validate inputs
+      const sanitizedApiKey = apiKey?.toString().trim();
+      const sanitizedClientId = clientId?.toString().trim();
+      const sanitizedMpin = mpin?.toString().trim();
+      const sanitizedTotp = totp?.toString().trim();
+      
+      if (!sanitizedApiKey || !sanitizedClientId || !sanitizedMpin || !sanitizedTotp) {
+        return new Response(JSON.stringify({ 
+          error: "Missing required fields",
+          details: "apiKey, clientId, mpin, and totp are all required"
+        }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const url =
-        "https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByMpin";
+      // Validate MPIN and TOTP format
+      if (!/^\d{4}$/.test(sanitizedMpin)) {
+        return new Response(JSON.stringify({ 
+          error: "Invalid MPIN format",
+          details: "MPIN must be exactly 4 digits"
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!/^\d{6}$/.test(sanitizedTotp)) {
+        return new Response(JSON.stringify({ 
+          error: "Invalid TOTP format",
+          details: "TOTP must be exactly 6 digits"
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log('loginByMpin attempt:', { 
+        apiKeyLength: sanitizedApiKey.length, 
+        clientId: sanitizedClientId, 
+        mpinLength: sanitizedMpin.length,
+        totpLength: sanitizedTotp.length
+      });
+
+      const url = "https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByMpin";
 
       const resp = await fetch(url, {
         method: "POST",
-        headers: buildHeaders(apiKey),
+        headers: buildHeaders(sanitizedApiKey),
         body: JSON.stringify({
-          clientcode: clientId,
-          mpin,
-          totp,
+          clientcode: sanitizedClientId,
+          mpin: sanitizedMpin,
+          totp: sanitizedTotp,
         }),
       });
 
-      const json = await resp.json();
-      console.log("loginByMpin response status:", resp.status);
+      console.log("Angel One API response status:", resp.status);
+      console.log("Angel One API response headers:", Object.fromEntries(resp.headers.entries()));
 
-      return new Response(JSON.stringify(json), {
-        status: resp.status,
+      // Safely parse Angel One API response
+      const responseText = await resp.text();
+      console.log("Angel One API raw response:", responseText.slice(0, 500));
+
+      let angelOneData: any;
+      try {
+        angelOneData = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        console.error("Failed to parse Angel One API response as JSON:", parseError);
+        return new Response(JSON.stringify({ 
+          error: "Invalid response from Angel One API",
+          details: "API returned non-JSON response",
+          status: resp.status,
+          rawResponse: responseText.slice(0, 200)
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Handle different response scenarios
+      if (!resp.ok) {
+        return new Response(JSON.stringify({ 
+          error: "Angel One API error",
+          details: angelOneData.message || angelOneData.errorMessage || "Authentication failed",
+          status: resp.status,
+          angelOneResponse: angelOneData
+        }), {
+          status: resp.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify(angelOneData), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (action === "getLTP") {
       const { apiKey, jwtToken, exchange, tradingsymbol, symboltoken } = body ?? {};
-      if (!apiKey || !jwtToken || !exchange || !tradingsymbol || !symboltoken) {
-        return new Response(JSON.stringify({ error: "Missing required fields" }), {
+      
+      // Sanitize inputs
+      const sanitizedApiKey = apiKey?.toString().trim();
+      const sanitizedJwtToken = jwtToken?.toString().trim();
+      const sanitizedExchange = exchange?.toString().trim();
+      const sanitizedTradingSymbol = tradingsymbol?.toString().trim();
+      const sanitizedSymbolToken = symboltoken?.toString().trim();
+      
+      if (!sanitizedApiKey || !sanitizedJwtToken || !sanitizedExchange || !sanitizedTradingSymbol || !sanitizedSymbolToken) {
+        return new Response(JSON.stringify({ 
+          error: "Missing required fields",
+          details: "apiKey, jwtToken, exchange, tradingsymbol, and symboltoken are all required"
+        }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const url =
-        "https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLTP";
+      console.log('getLTP attempt:', { 
+        exchange: sanitizedExchange, 
+        tradingsymbol: sanitizedTradingSymbol, 
+        symboltoken: sanitizedSymbolToken 
+      });
+
+      const url = "https://apiconnect.angelone.in/rest/secure/angelbroking/order/v1/getLTP";
 
       const resp = await fetch(url, {
         method: "POST",
-        headers: buildHeaders(apiKey, jwtToken),
+        headers: buildHeaders(sanitizedApiKey, sanitizedJwtToken),
         body: JSON.stringify({
-          exchange,
-          tradingsymbol,
-          symboltoken,
+          exchange: sanitizedExchange,
+          tradingsymbol: sanitizedTradingSymbol,
+          symboltoken: sanitizedSymbolToken,
         }),
       });
 
-      const json = await resp.json();
-      console.log("getLTP response status:", resp.status);
+      console.log("Angel One getLTP response status:", resp.status);
 
-      return new Response(JSON.stringify(json), {
-        status: resp.status,
+      // Safely parse Angel One API response
+      const responseText = await resp.text();
+      console.log("Angel One getLTP raw response:", responseText.slice(0, 500));
+
+      let angelOneData: any;
+      try {
+        angelOneData = responseText ? JSON.parse(responseText) : {};
+      } catch (parseError) {
+        console.error("Failed to parse Angel One getLTP response as JSON:", parseError);
+        return new Response(JSON.stringify({ 
+          error: "Invalid response from Angel One API",
+          details: "API returned non-JSON response",
+          status: resp.status,
+          rawResponse: responseText.slice(0, 200)
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Handle different response scenarios
+      if (!resp.ok) {
+        return new Response(JSON.stringify({ 
+          error: "Angel One API error",
+          details: angelOneData.message || angelOneData.errorMessage || "Failed to fetch market data",
+          status: resp.status,
+          angelOneResponse: angelOneData
+        }), {
+          status: resp.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify(angelOneData), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

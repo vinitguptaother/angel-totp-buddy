@@ -138,15 +138,23 @@ const Index = () => {
       const { data: loginData, error: loginError } = await supabase.functions.invoke('angel-one-proxy', {
         body: {
           action: 'loginByMpin',
-          apiKey: credentials.apiKey,
-          clientId: credentials.clientId,
-          mpin: credentials.mpin,
-          totp: totpCode,
+          apiKey: credentials.apiKey.trim(),
+          clientId: credentials.clientId.trim(),
+          mpin: credentials.mpin.trim(),
+          totp: totpCode.trim(),
         },
       });
 
       if (loginError) {
-        throw new Error(loginError.message || 'Login failed');
+        console.error('Supabase function error:', loginError);
+        throw new Error(loginError.message || 'Connection to API proxy failed');
+      }
+
+      console.log('Login response:', loginData);
+
+      // Handle Edge Function errors (non-2xx responses)
+      if (loginData.error) {
+        throw new Error(loginData.details || loginData.error || 'Authentication failed');
       }
 
       if (loginData.status && loginData.data) {
@@ -159,24 +167,32 @@ const Index = () => {
         setSessionTokens(tokens);
         setConnectionStatus("connected");
 
-        // Fetch live market data for selected stock
-        if (selectedStock) {
-          const { data: marketData, error: marketError } = await supabase.functions.invoke('angel-one-proxy', {
-            body: {
-              action: 'getLTP',
-              apiKey: credentials.apiKey,
-              jwtToken: tokens.jwtToken,
-              exchange: selectedStock.exchange,
-              tradingsymbol: selectedStock.symbol,
-              symboltoken: selectedStock.token,
-            },
-          });
+          // Fetch live market data for selected stock
+          if (selectedStock) {
+            const { data: marketData, error: marketError } = await supabase.functions.invoke('angel-one-proxy', {
+              body: {
+                action: 'getLTP',
+                apiKey: credentials.apiKey.trim(),
+                jwtToken: tokens.jwtToken,
+                exchange: selectedStock.exchange,
+                tradingsymbol: selectedStock.symbol,
+                symboltoken: selectedStock.token,
+              },
+            });
 
-          if (marketError) {
-            throw new Error(marketError.message || 'Failed to fetch market data');
-          }
-          
-          if (marketData.status && marketData.data) {
+            if (marketError) {
+              console.error('Market data fetch error:', marketError);
+              throw new Error(marketError.message || 'Failed to fetch market data');
+            }
+
+            console.log('Market data response:', marketData);
+
+            // Handle Edge Function errors
+            if (marketData.error) {
+              throw new Error(marketData.details || marketData.error || 'Failed to fetch market data');
+            }
+            
+            if (marketData.status && marketData.data) {
             const ltp = marketData.data.ltp;
             const formattedData = {
               symbol: selectedStock.symbol.replace('-EQ', ''),
@@ -196,13 +212,28 @@ const Index = () => {
           description: "Successfully connected to Angel One API and fetched live market data.",
         });
       } else {
-        throw new Error(loginData.message || 'Login failed');
+        throw new Error(loginData.message || loginData.errorMessage || 'Authentication failed - no valid tokens received');
       }
     } catch (error) {
+      console.error('Login process failed:', error);
       setConnectionStatus("error");
+      
+      let errorMessage = "Login failed. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid MPIN format')) {
+          errorMessage = "MPIN must be exactly 4 digits.";
+        } else if (error.message.includes('Invalid TOTP format')) {
+          errorMessage = "TOTP must be exactly 6 digits.";
+        } else if (error.message.includes('Angel One API error')) {
+          errorMessage = error.message.replace('Angel One API error: ', '');
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
-        title: "Login Failed",
-        description: error instanceof Error ? error.message : "Invalid TOTP code or connection error. Please try again.",
+        title: "Authentication Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     }

@@ -44,16 +44,17 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.apiKey && formData.clientId && formData.mpin) {
+      // Sanitize and trim all inputs
       const credentials = {
-        apiKey: formData.apiKey,
-        clientId: formData.clientId,
-        mpin: formData.mpin,
-        totpSecret: formData.totpSecret || undefined,
+        apiKey: formData.apiKey.trim(),
+        clientId: formData.clientId.trim(),
+        mpin: formData.mpin.trim(),
+        totpSecret: formData.totpSecret?.trim() || undefined,
       };
       
-      // Save to localStorage
+      // Save sanitized data to localStorage
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
       } catch (error) {
         console.error('Failed to save credentials to storage:', error);
       }
@@ -197,7 +198,10 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
               type={showMpin ? "text" : "password"}
               placeholder="Enter your 4-digit MPIN"
               value={formData.mpin}
-              onChange={(e) => handleInputChange("mpin", e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                handleInputChange("mpin", value);
+              }}
               required
               maxLength={4}
               className="bg-trading-card border-trading-border pr-10"
