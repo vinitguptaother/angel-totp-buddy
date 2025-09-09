@@ -15,7 +15,7 @@ type ConnectionStatus = "disconnected" | "connected" | "pending" | "error";
 interface Credentials {
   apiKey: string;
   clientId: string;
-  password: string;
+  mpin: string;
   totpSecret?: string;
 }
 
@@ -133,8 +133,8 @@ const Index = () => {
     setConnectionStatus("pending");
     
     try {
-      // Angel One Login API call
-      const loginResponse = await fetch('https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByPassword', {
+      // Angel One MPIN Login API call
+      const loginResponse = await fetch('https://apiconnect.angelone.in/rest/auth/angelbroking/user/v1/loginByMpin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ const Index = () => {
         },
         body: JSON.stringify({
           clientcode: credentials.clientId,
-          password: credentials.password,
+          mpin: credentials.mpin,
           totp: totpCode
         })
       });

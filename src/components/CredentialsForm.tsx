@@ -9,7 +9,7 @@ interface CredentialsFormProps {
   onSave: (credentials: {
     apiKey: string;
     clientId: string;
-    password: string;
+    mpin: string;
     totpSecret?: string;
   }) => void;
   hasCredentials: boolean;
@@ -22,10 +22,10 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
   const [formData, setFormData] = useState({
     apiKey: "",
     clientId: "",
-    password: "",
+    mpin: "",
     totpSecret: "",
   });
-  const [showPassword, setShowPassword] = useState(false);
+  const [showMpin, setShowMpin] = useState(false);
   const [showTotpSecret, setShowTotpSecret] = useState(false);
 
   // Load credentials from localStorage on mount
@@ -43,11 +43,11 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.apiKey && formData.clientId && formData.password) {
+    if (formData.apiKey && formData.clientId && formData.mpin) {
       const credentials = {
         apiKey: formData.apiKey,
         clientId: formData.clientId,
-        password: formData.password,
+        mpin: formData.mpin,
         totpSecret: formData.totpSecret || undefined,
       };
       
@@ -68,7 +68,7 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
       setFormData({
         apiKey: "",
         clientId: "",
-        password: "",
+        mpin: "",
         totpSecret: "",
       });
       if (onClearStorage) {
@@ -175,27 +175,31 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
           />
         </div>
 
-        {/* Password */}
+        {/* MPIN */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="mpin">MPIN</Label>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>Your Angel One login password</p>
+                <p>Your Angel One 4-digit MPIN</p>
+                <p className="text-xs text-muted-foreground">
+                  Set up in your Angel One mobile app
+                </p>
               </TooltipContent>
             </Tooltip>
           </div>
           <div className="relative">
             <Input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={(e) => handleInputChange("password", e.target.value)}
+              id="mpin"
+              type={showMpin ? "text" : "password"}
+              placeholder="Enter your 4-digit MPIN"
+              value={formData.mpin}
+              onChange={(e) => handleInputChange("mpin", e.target.value)}
               required
+              maxLength={4}
               className="bg-trading-card border-trading-border pr-10"
             />
             <Button
@@ -203,9 +207,9 @@ export const CredentialsForm = ({ onSave, hasCredentials, onClearStorage }: Cred
               variant="ghost"
               size="sm"
               className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowMpin(!showMpin)}
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showMpin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
         </div>
