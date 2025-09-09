@@ -31,6 +31,14 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -46,6 +54,16 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        trading: {
+          bg: "hsl(var(--trading-bg))",
+          card: "hsl(var(--trading-card))",
+          border: "hsl(var(--trading-border))",
+        },
+        status: {
+          connected: "hsl(var(--status-connected))",
+          disconnected: "hsl(var(--status-disconnected))",
+          pending: "hsl(var(--status-pending))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
