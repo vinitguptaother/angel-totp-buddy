@@ -56,11 +56,14 @@ serve(async (req) => {
     const buildHeaders = (apiKey: string, jwtToken?: string) => ({
       "Content-Type": "application/json",
       Accept: "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "Origin": "https://smartapi.angelone.in",
+      "Referer": "https://smartapi.angelone.in/",
       "X-UserType": "USER",
       "X-SourceID": "WEB",
-      "X-ClientLocalIP": "192.168.1.1",
-      "X-ClientPublicIP": "106.193.147.98",
-      "X-MACAddress": "00:00:00:00:00:00",
+      "X-ClientLocalIP": "CLIENT_IP",
+      "X-ClientPublicIP": "CLIENT_IP", 
+      "X-MACAddress": "MAC_ADDRESS",
       "X-PrivateKey": apiKey,
       ...(jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}),
     });
